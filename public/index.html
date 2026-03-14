@@ -1,1088 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token Management Master System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════ -->
+<div id="auth-screen" class="auth-bg">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">⬡</div>
+      <div class="auth-brand-text">
+        <h1>Token Management<br>Master System</h1>
+        <span>Enterprise · v2.0</span>
+      </div>
+    </div>
+    <div class="auth-divider"></div>
+    <h2 class="auth-heading">Welcome back</h2>
+    <p class="auth-sub">Sign in to your workspace</p>
+    <div id="auth-error" class="alert-error"></div>
+    <div class="field-wrap">
+      <label class="field-label">Username</label>
+      <input class="field-input" type="text" id="login-user" placeholder="Enter your username" autocomplete="username">
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Password</label>
+      <input class="field-input" type="password" id="login-pass" placeholder="Enter your password">
+    </div>
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">
+      Sign In &nbsp;→
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════ -->
+<div id="app" style="display:none">
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">⬡</div>
+      <div class="nav-brand-text">
+        <strong>Token Management</strong>
+        <small>Master System</small>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchPanel('tracker')" id="tab-tracker">
+        🎫 Token Tracker
+      </button>
+      <button class="nav-tab" onclick="switchPanel('discussion')" id="tab-discussion">
+        💬 Discussion
+        <span id="nav-ch-unread" class="unread-pill" style="display:none">0</span>
+      </button>
+      <button class="nav-tab" onclick="switchPanel('messages')" id="tab-messages">
+        ✉️ Messages
+        <span id="nav-dm-unread" class="unread-pill" style="display:none">0</span>
+      </button>
+      <button class="nav-tab" onclick="switchPanel('admin')" id="tab-admin" style="display:none">
+        ⚙️ Admin
+      </button>
+      <button class="nav-tab" onclick="switchPanel('payments')" id="tab-payments">
+        💳 Payments
+      </button>
+      <button class="nav-tab" onclick="switchPanel('settings')" id="tab-settings">
+        🔧 Settings
+      </button>
+      <button class="nav-tab" onclick="switchPanel('about')" id="tab-about">
+        ℹ️ About
+      </button>
+      <a class="nav-tab" href="https://challan.ramnathshetty.com" target="_blank" rel="noopener noreferrer">
+        🚔 Challan Tracker
+      </a>
+    </div>
+
+    <div class="nav-user">
+      <div>
+        <div id="nav-name" class="nav-name"></div>
+        <div id="nav-role" class="nav-role"></div>
+      </div>
+      <div class="nav-avatar" id="nav-avatar"></div>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════
+       TOKEN TRACKER PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-tracker" class="panel active">
+    <div class="panel-scroll">
+
+      <!-- KYC banners appear here dynamically -->
+      <div id="kyc-banners"></div>
+
+      <!-- Stat cards -->
+      <div class="stat-grid">
+        <div class="stat-card c-teal">
+          <div class="stat-icon c-teal">🎫</div>
+          <div class="stat-value" id="stat-active">0</div>
+          <div class="stat-label">Active Tokens</div>
+        </div>
+        <div class="stat-card c-gold">
+          <div class="stat-icon c-gold">✅</div>
+          <div class="stat-value" id="stat-completed">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card c-coral">
+          <div class="stat-icon c-coral">💰</div>
+          <div class="stat-value mono" id="stat-due">₹0</div>
+          <div class="stat-label">Total Due</div>
+        </div>
+        <div class="stat-card c-violet">
+          <div class="stat-icon c-violet">📊</div>
+          <div class="stat-value" id="stat-today">0</div>
+          <div class="stat-label">Added Today</div>
+        </div>
+      </div>
+
+      <!-- Add Token -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title"><span class="title-dot"></span>Add New Token</div>
+        </div>
+        <div class="card-bd">
+          <div class="add-token-grid">
+            <div>
+              <label class="field-label">Token &amp; Details</label>
+              <textarea class="token-textarea" id="token-details" placeholder="Paste all token info here..." rows="3"></textarea>
+            </div>
+            <div>
+              <label class="field-label">Charges (₹)</label>
+              <input class="field-input" type="number" id="token-charge" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <button class="btn-add-token" onclick="addToken()">
+              + Add Token
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Due -->
+      <div class="due-bar">
+        <div class="due-label">
+          <span>💰</span> Total Due (Completed Tokens)
+        </div>
+        <div class="due-amount" id="total-due">₹0.00</div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <input class="field-input" type="date" id="filter-from" title="From date">
+        <input class="field-input" type="date" id="filter-to" title="To date">
+        <select class="field-input" id="filter-agent" style="display:none;min-width:160px">
+          <option value="">All Agents</option>
+        </select>
+        <input class="field-input filter-search" type="text" id="filter-search" placeholder="🔍  Search tokens..." oninput="loadTokens()">
+        <button class="btn-filter" onclick="loadTokens()">Filter</button>
+        <a href="#" class="btn-csv" onclick="downloadReport(event)">📥 Export CSV</a>
+        <button class="btn-clear" onclick="clearFilters()">✕ Clear</button>
+        <div class="refresh-badge">
+          <div class="pulse-dot"></div>
+          <span id="refresh-timer">30:00</span>
+        </div>
+      </div>
+
+      <!-- Token Table -->
+      <div class="card">
+        <div class="tab-strip">
+          <button class="tab-btn active" onclick="switchTokenTab('active')" id="ttab-active">
+            Active <span class="tab-count" id="count-active">0</span>
+          </button>
+          <button class="tab-btn" onclick="switchTokenTab('completed')" id="ttab-completed">
+            Completed <span class="tab-count muted" id="count-completed">0</span>
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Token ID</th>
+                <th>Submitted By</th>
+                <th>Date (IST)</th>
+                <th>Details</th>
+                <th>Charges</th>
+                <th>KYC Doc</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="token-tbody"></tbody>
+          </table>
+          <div id="token-empty" class="empty-state" style="display:none">
+            <span class="ei">🎫</span>
+            <p>No tokens found for the selected filters.</p>
+          </div>
+          <div id="token-loading" class="empty-state">
+            <span class="ei">⏳</span>
+            <p>Loading tokens…</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       DISCUSSION BOARD PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-discussion" class="panel">
+    <div class="chat-layout">
+
+      <!-- Sidebar -->
+      <div class="chat-sidebar" id="discussion-sidebar">
+        <div class="sidebar-top">
+          <div class="sidebar-top-row">
+            <span style="font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--text-1)">Channels</span>
+            <button class="sidebar-btn-new" id="new-channel-btn" onclick="openChannelModal()" style="display:none" title="New Channel">+</button>
+          </div>
+        </div>
+        <div class="sidebar-scroll" id="channels-list"></div>
+        <div class="sidebar-footer">
+          <div class="online-label">Team Members</div>
+          <div id="team-members"></div>
+        </div>
+      </div>
+
+      <!-- Chat Main -->
+      <div class="chat-main">
+        <div class="chat-topbar">
+          <button class="mobile-sidebar-btn" onclick="openMobileSidebar('discussion')" title="Channels">☰</button>
+          <div class="chat-topbar-left">
+            <span class="chat-topbar-icon" id="chat-icon">💬</span>
+            <div>
+              <div class="chat-topbar-name" id="chat-name"># general</div>
+              <div class="chat-topbar-desc" id="chat-desc">General team chat</div>
+            </div>
+          </div>
+        </div>
+        <div class="messages-area" id="messages-area">
+          <div class="empty-state"><span class="ei">💬</span><p>Loading messages…</p></div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-wrap">
+            <textarea class="chat-textarea" id="msg-input" placeholder="Message the team…" onkeydown="handleMsgKey(event)" oninput="autoResizeTA(this)" rows="1"></textarea>
+            <button class="send-btn" onclick="sendMessage()">➤</button>
+          </div>
+          <div class="input-hint">Press Enter to send · Shift+Enter for a new line</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       DIRECT MESSAGES PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-messages" class="panel">
+    <div class="chat-layout">
+
+      <!-- Sidebar -->
+      <div class="chat-sidebar" id="messages-sidebar">
+        <div class="sidebar-top">
+          <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--text-1)">Direct Messages</div>
+        </div>
+        <div class="sidebar-scroll" id="dm-list"></div>
+      </div>
+
+      <!-- DM Chat -->
+      <div class="chat-main" id="dm-chat-main">
+        <button class="mobile-sidebar-btn" onclick="openMobileSidebar('messages')" title="Conversations" style="position:absolute;top:10px;left:10px;z-index:10;display:none" id="dm-sidebar-btn">☰</button>
+        <div class="dm-empty">
+          <div class="dm-empty-icon">✉️</div>
+          <p id="dm-pick-msg">Select a conversation to start messaging</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       ADMIN PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-admin" class="panel">
+    <div class="panel-scroll">
+      <div class="admin-grid">
+        <div class="card">
+          <div class="card-hd">
+            <div class="card-title"><span class="title-dot"></span>Agent Management</div>
+            <button class="btn btn-primary" onclick="openUserModal()" style="padding:9px 18px;font-size:13px">+ Add Agent</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Full Name</th><th>Username</th><th>Role</th><th>Action</th></tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title"><span class="title-dot" style="background:var(--gold);box-shadow:0 0 8px var(--gold)"></span>System Summary</div></div>
+          <div class="card-bd">
+            <div class="admin-stat-grid" id="admin-summary"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       PAYMENTS PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-payments" class="panel">
+    <div class="panel-scroll">
+
+      <div class="settings-page-header">
+        <div>
+          <h1 class="settings-title">💳 Payments</h1>
+          <p class="settings-sub" id="pay-panel-sub">Record and track payment submissions with screenshots</p>
+        </div>
+      </div>
+
+      <!-- Add Payment Form -->
+      <div class="card pay-form-card" id="pay-form-card">
+        <div class="card-hd">
+          <div class="card-title"><span class="title-dot" style="background:var(--teal)"></span>Record New Payment</div>
+        </div>
+        <div class="card-bd">
+          <div class="pay-form-grid">
+
+            <!-- Details -->
+            <div class="pay-field-full">
+              <label class="field-label">Payment Details <span style="color:var(--coral)">*</span></label>
+              <textarea class="field-input pay-details-area" id="pay-details"
+                placeholder="Enter token numbers, location, transaction reference, bank details, or any other relevant information…"
+                rows="5"></textarea>
+            </div>
+
+            <!-- Amount + Date row -->
+            <div class="pay-field-half">
+              <label class="field-label">Amount (₹) <span style="color:var(--coral)">*</span></label>
+              <input class="field-input pay-amount-input" type="number" id="pay-amount"
+                placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="pay-field-half">
+              <label class="field-label">Payment Date</label>
+              <input class="field-input" type="date" id="pay-date">
+              <div style="font-size:11px;color:var(--text-3);margin-top:5px">Leave blank to use today's date</div>
+            </div>
+
+            <!-- Screenshot upload -->
+            <div class="pay-field-full">
+              <label class="field-label">Payment Screenshot</label>
+              <div class="pay-drop-zone" id="pay-drop-zone"
+                onclick="document.getElementById('pay-screenshot').click()"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                ondrop="handlePayDrop(event)">
+                <div id="pay-drop-content">
+                  <div class="pay-drop-icon">📷</div>
+                  <div class="pay-drop-text">Click to upload or drag &amp; drop screenshot</div>
+                  <div class="pay-drop-sub">JPG, PNG, WEBP up to 10MB</div>
+                </div>
+                <div id="pay-preview-wrap" style="display:none">
+                  <img id="pay-preview-img" class="pay-preview-img" alt="Preview">
+                  <div id="pay-preview-name" class="pay-preview-name"></div>
+                  <button class="pay-remove-btn" onclick="event.stopPropagation();clearPayScreenshot()">✕ Remove</button>
+                </div>
+                <input type="file" id="pay-screenshot" accept="image/*" style="display:none" onchange="handlePayFile(this)">
+              </div>
+            </div>
+
+          </div>
+
+          <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
+            <button class="btn btn-primary pay-submit-btn" id="pay-submit-btn" onclick="submitPayment()">
+              💳 Submit Payment
+            </button>
+            <button class="btn btn-secondary" onclick="clearPayForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payments List -->
+      <div class="card" style="padding:0;overflow:hidden;margin-top:20px">
+        <div class="card-hd" style="padding:20px 24px 16px;border-bottom:1px solid var(--border)">
+          <div class="card-title"><span class="title-dot" style="background:var(--gold)"></span>Payment History</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="pay-count-badge" class="tab-count" style="background:var(--gold);color:var(--navy)">0</span>
+            <button class="btn btn-secondary" onclick="loadPayments()" style="padding:7px 14px;font-size:12px">↻ Refresh</button>
+          </div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="pay-search-bar">
+          <div class="pay-search-wrap">
+            <span class="pay-search-icon">🔍</span>
+            <input class="pay-search-input" type="text" id="pay-search"
+              placeholder="Search by details, amount, date, agent or ref…"
+              oninput="filterPayments()">
+            <button class="pay-search-clear" id="pay-search-clear" onclick="clearPaySearch()" style="display:none">✕</button>
+          </div>
+        </div>
+
+        <div id="pay-list">
+          <div class="empty-state"><span class="ei">💳</span><p>No payments recorded yet.</p></div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pay-pagination" id="pay-pagination" style="display:none">
+          <button class="pay-page-btn" id="pay-prev-btn" onclick="changePayPage(-1)" disabled>← Prev</button>
+          <div class="pay-page-numbers" id="pay-page-numbers"></div>
+          <button class="pay-page-btn" id="pay-next-btn" onclick="changePayPage(1)">Next →</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       SETTINGS PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-settings" class="panel">
+    <div class="panel-scroll">
+
+      <div class="settings-page-header">
+        <div>
+          <h1 class="settings-title">Settings</h1>
+          <p class="settings-sub">Manage your account and system preferences</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+
+        <!-- LEFT COLUMN -->
+        <div>
+
+          <!-- Change Own Password -->
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-title"><span class="title-dot" style="background:var(--teal)"></span>Change My Password</div>
+            </div>
+            <div class="card-bd">
+              <div class="settings-desc">Update your own login password. You must know your current password to proceed.</div>
+              <div class="field-wrap">
+                <label class="field-label">Current Password</label>
+                <input class="field-input" type="password" id="cp-current" placeholder="Your current password">
+              </div>
+              <div class="field-wrap">
+                <label class="field-label">New Password</label>
+                <input class="field-input" type="password" id="cp-new" placeholder="At least 6 characters">
+              </div>
+              <div class="field-wrap">
+                <label class="field-label">Confirm New Password</label>
+                <input class="field-input" type="password" id="cp-confirm" placeholder="Repeat new password">
+              </div>
+              <button class="btn btn-primary" onclick="changeOwnPassword()" style="margin-top:4px">
+                🔒 Update Password
+              </button>
+            </div>
+          </div>
+
+          <!-- Admin: Reset Any User Password -->
+          <div class="card" id="admin-pwd-card" style="display:none">
+            <div class="card-hd">
+              <div class="card-title"><span class="title-dot" style="background:var(--coral)"></span>Reset Agent Password</div>
+            </div>
+            <div class="card-bd">
+              <div class="settings-desc">As admin, you can reset any agent's password without knowing their current one.</div>
+              <div class="field-wrap">
+                <label class="field-label">Select Agent</label>
+                <select class="field-input" id="reset-user-sel"></select>
+              </div>
+              <div class="field-wrap">
+                <label class="field-label">New Password</label>
+                <input class="field-input" type="password" id="reset-user-pass" placeholder="Set a new password">
+              </div>
+              <button class="btn btn-primary" onclick="resetUserPassword()" style="margin-top:4px;background:var(--grad-coral)">
+                🔑 Reset Password
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div>
+
+          <!-- System Stats -->
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-title"><span class="title-dot" style="background:var(--gold)"></span>System Statistics</div>
+              <button class="btn btn-secondary" onclick="loadSettingsStats()" style="padding:7px 14px;font-size:12px">↻ Refresh</button>
+            </div>
+            <div class="card-bd">
+              <div class="sys-stats-grid" id="sys-stats">
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-tokens">—</div><div class="sys-stat-label">Total Tokens</div></div>
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-active">—</div><div class="sys-stat-label">Active</div></div>
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-completed">—</div><div class="sys-stat-label">Completed</div></div>
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-due" style="color:var(--gold)">—</div><div class="sys-stat-label">Total Due</div></div>
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-users">—</div><div class="sys-stat-label">Team Members</div></div>
+                <div class="sys-stat"><div class="sys-stat-val" id="ss-msgs">—</div><div class="sys-stat-label">Chat Messages</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backup & Restore (admin only) -->
+          <div class="card" id="backup-card" style="display:none">
+            <div class="card-hd">
+              <div class="card-title"><span class="title-dot" style="background:var(--violet)"></span>Backup &amp; Restore</div>
+            </div>
+            <div class="card-bd">
+
+              <!-- Backup -->
+              <div class="backup-section">
+                <div class="backup-section-title">📦 Export Backup</div>
+                <div class="settings-desc">Download a complete JSON backup of all tokens, messages, channels, and users. Store it safely — you can restore from it any time.</div>
+                <button class="btn btn-primary" onclick="downloadBackup()" style="margin-top:12px;background:var(--grad-violet)">
+                  📥 Download Full Backup
+                </button>
+              </div>
+
+              <div class="backup-divider"></div>
+
+              <!-- Restore -->
+              <div class="backup-section">
+                <div class="backup-section-title">🔄 Restore from Backup</div>
+                <div class="settings-desc">Upload a previously downloaded backup file. Choose what data to restore — existing records will be updated, new records will be added.</div>
+
+                <div class="restore-checkboxes">
+                  <label class="check-row"><input type="checkbox" id="restore-tokens" checked> Restore Tokens</label>
+                  <label class="check-row"><input type="checkbox" id="restore-messages" checked> Restore Messages &amp; Channels</label>
+                  <label class="check-row"><input type="checkbox" id="restore-users"> Update User Profiles</label>
+                </div>
+
+                <div class="restore-drop" id="restore-drop" onclick="document.getElementById('restore-file').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleRestoreDrop(event)">
+                  <div class="restore-drop-icon">📂</div>
+                  <div class="restore-drop-text">Click to choose file or drag &amp; drop</div>
+                  <div class="restore-drop-sub">Accepts .json backup files</div>
+                  <input type="file" id="restore-file" accept=".json" style="display:none" onchange="handleRestoreFile(this)">
+                </div>
+
+                <div id="restore-preview" style="display:none">
+                  <div class="restore-preview-box">
+                    <div class="restore-file-info" id="restore-file-info"></div>
+                    <button class="btn btn-primary" onclick="confirmRestore()" style="background:var(--grad-teal);margin-top:12px;width:100%">
+                      ✅ Restore Now
+                    </button>
+                    <button class="btn btn-secondary" onclick="cancelRestore()" style="margin-top:8px;width:100%">Cancel</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       ABOUT PANEL
+  ══════════════════════════════════ -->
+  <div id="panel-about" class="panel">
+    <div class="panel-scroll">
+      <div class="about-wrap">
+
+        <!-- Hero -->
+        <div class="about-hero">
+          <div class="about-hero-logo">⬡</div>
+          <div class="about-hero-text">
+            <h1>Token Management<br>Master System</h1>
+            <span class="about-version-badge">Version 2.0 · Enterprise</span>
+          </div>
+        </div>
+
+        <!-- Developer card -->
+        <div class="about-dev-card">
+          <div class="about-dev-left">
+            <div class="about-dev-icon">🏢</div>
+            <div>
+              <div class="about-dev-title">Developed by</div>
+              <div class="about-dev-name">Nithya Informatics</div>
+              <div class="about-dev-sub">Computer Section · Gizmo Hub, Mumbai</div>
+            </div>
+          </div>
+          <div class="about-dev-contact">
+            <div class="about-contact-row">
+              <span class="about-contact-icon">📞</span>
+              <a href="tel:7021956841" class="about-contact-link">7021956841</a>
+            </div>
+            <div class="about-contact-row">
+              <span class="about-contact-icon">📍</span>
+              <span>Mumbai, Maharashtra</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features grid -->
+        <div class="about-section-title">✨ Features</div>
+        <div class="about-features-grid">
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--teal-glow);color:var(--teal)">🎫</div>
+            <div class="about-feature-title">Token Tracker</div>
+            <div class="about-feature-desc">Add, manage, and track tokens with charges. Filter by date, agent or keyword. Active and Completed tabs with live counts.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--gold-glow);color:var(--gold)">💰</div>
+            <div class="about-feature-title">Financial Dashboard</div>
+            <div class="about-feature-desc">Real-time Total Due calculation on active tokens. Export filtered data to CSV for accounting and record-keeping.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--violet-light);color:var(--violet)">📄</div>
+            <div class="about-feature-title">KYC Document Upload</div>
+            <div class="about-feature-desc">Admin can upload KYC images to Cloudinary after token completion. Agent receives instant notification to view their KYC document.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--teal-glow);color:var(--teal)">💬</div>
+            <div class="about-feature-title">Discussion Board</div>
+            <div class="about-feature-desc">Real-time team chat replacing WhatsApp. Multiple channels, token alert notifications, unread badges, and message history.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--coral-glow);color:var(--coral)">✉️</div>
+            <div class="about-feature-title">Direct Messages</div>
+            <div class="about-feature-desc">Private messaging between Admin and Agents. Agents can only message Admin. Admin can message each agent individually.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:rgba(245,200,66,0.1);color:var(--gold)">🔐</div>
+            <div class="about-feature-title">Role-Based Access</div>
+            <div class="about-feature-desc">Admin and Agent roles with granular permissions. Agents manage their own tokens; Admin oversees all. Secure session-based login.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--teal-glow);color:var(--teal)">⚡</div>
+            <div class="about-feature-title">Real-Time Updates</div>
+            <div class="about-feature-desc">Powered by Socket.IO for instant message delivery, KYC notifications, and live token alerts across all connected users.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--violet-light);color:var(--violet)">📦</div>
+            <div class="about-feature-title">Backup &amp; Restore</div>
+            <div class="about-feature-desc">Full database backup to JSON with one click. Selectively restore tokens, messages, or user data from any previous backup file.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:var(--coral-glow);color:var(--coral)">🔧</div>
+            <div class="about-feature-title">Admin Controls</div>
+            <div class="about-feature-desc">Add/remove agents, reset passwords, view system statistics, manage channels, and maintain complete oversight of all operations.</div>
+          </div>
+
+          <div class="about-feature-card">
+            <div class="about-feature-icon" style="background:rgba(0,212,170,0.08);color:var(--teal)">☁️</div>
+            <div class="about-feature-title">Cloud Ready</div>
+            <div class="about-feature-desc">Deployed on Railway with PostgreSQL. Cloudinary for KYC image storage. Accessible from anywhere on any device.</div>
+          </div>
+
+        </div>
+
+        <!-- Tech stack -->
+        <div class="about-section-title">🛠 Technology Stack</div>
+        <div class="about-tech-grid">
+          <div class="about-tech-pill">Node.js</div>
+          <div class="about-tech-pill">Express.js</div>
+          <div class="about-tech-pill">PostgreSQL</div>
+          <div class="about-tech-pill">Socket.IO</div>
+          <div class="about-tech-pill">Cloudinary</div>
+          <div class="about-tech-pill">Railway</div>
+          <div class="about-tech-pill">bcrypt</div>
+          <div class="about-tech-pill">Sora · JetBrains Mono</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="about-footer">
+          <div>© 2025 Nithya Informatics · Gizmo Hub, Mumbai</div>
+          <div style="margin-top:6px;opacity:0.5">Token Management Master System v2.0 · All rights reserved</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       MOBILE BOTTOM NAV (hidden on desktop)
+  ════════════════════════════════════════ -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <button class="mbn-tab active" id="mbn-tracker" onclick="switchPanel('tracker')">
+      <span class="mbn-icon">🎫</span>
+      <span class="mbn-label">Tokens</span>
+    </button>
+    <button class="mbn-tab" id="mbn-discussion" onclick="switchPanel('discussion')">
+      <span class="mbn-icon">💬</span>
+      <span class="mbn-label">Chat</span>
+      <span id="mbn-ch-badge" class="mbn-badge" style="display:none">0</span>
+    </button>
+    <button class="mbn-tab" id="mbn-messages" onclick="switchPanel('messages')">
+      <span class="mbn-icon">✉️</span>
+      <span class="mbn-label">DMs</span>
+      <span id="mbn-dm-badge" class="mbn-badge" style="display:none">0</span>
+    </button>
+    <button class="mbn-tab" id="mbn-payments" onclick="switchPanel('payments')">
+      <span class="mbn-icon">💳</span>
+      <span class="mbn-label">Payments</span>
+    </button>
+    <button class="mbn-tab" id="mbn-more" onclick="toggleMobileMenu()">
+      <span class="mbn-icon">⋯</span>
+      <span class="mbn-label">More</span>
+    </button>
+  </nav>
+
+  <!-- Mobile "More" slide-up menu -->
+  <div class="mobile-more-overlay" id="mobile-more-overlay" onclick="closeMobileMenu()"></div>
+  <div class="mobile-more-sheet" id="mobile-more-sheet">
+    <div class="mobile-more-handle"></div>
+    <div class="mobile-more-user">
+      <div class="mobile-more-avatar" id="mobile-more-avatar"></div>
+      <div>
+        <div class="mobile-more-name" id="mobile-more-name"></div>
+        <div class="mobile-more-role" id="mobile-more-role"></div>
+      </div>
+    </div>
+    <div class="mobile-more-items">
+      <button class="mobile-more-item" id="mbn-admin" onclick="closeMobileMenu();switchPanel('admin')" style="display:none">
+        <span>⚙️</span> Admin Panel
+      </button>
+      <button class="mobile-more-item" onclick="closeMobileMenu();switchPanel('settings')">
+        <span>🔧</span> Settings
+      </button>
+      <button class="mobile-more-item" onclick="closeMobileMenu();switchPanel('about')">
+        <span>ℹ️</span> About
+      </button>
+      <a class="mobile-more-item" href="https://challan.ramnathshetty.com" target="_blank" rel="noopener noreferrer" onclick="closeMobileMenu()">
+        <span>🚔</span> Challan Tracker
+      </a>
+      <button class="mobile-more-item mobile-more-logout" onclick="doLogout()">
+        <span>🚪</span> Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile chat sidebar drawer overlay -->
+  <div class="mobile-sidebar-overlay" id="mobile-sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+</div><!-- /app -->
+
+<!-- ════════════════════════════════════════
+     MODALS
+════════════════════════════════════════ -->
+
+<!-- Edit Token Modal -->
+<div class="modal-overlay" id="edit-token-modal" onclick="closeModalOnBg(event,'edit-token-modal')">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Token</div>
+    <input type="hidden" id="edit-token-id">
+    <div class="field-wrap">
+      <label class="field-label">Token &amp; Details</label>
+      <textarea class="field-input" id="edit-token-details" rows="6" style="font-family:JetBrains Mono,monospace;font-size:12px;resize:vertical;min-height:120px;line-height:1.6;"></textarea>
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Charges (₹)</label>
+      <input class="field-input" type="number" id="edit-token-charge" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('edit-token-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTokenEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Channel -->
+<div class="modal-overlay" id="channel-modal" onclick="closeModalOnBg(event,'channel-modal')">
+  <div class="modal">
+    <div class="modal-title">🗂 Create New Channel</div>
+    <div class="field-wrap"><label class="field-label">Channel Name</label><input class="field-input" type="text" id="new-ch-name" placeholder="e.g. announcements"></div>
+    <div class="field-wrap"><label class="field-label">Description</label><input class="field-input" type="text" id="new-ch-desc" placeholder="What is this channel for?"></div>
+    <div class="field-wrap"><label class="field-label">Icon (emoji)</label><input class="field-input" type="text" id="new-ch-icon" value="💬" maxlength="2" style="width:80px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('channel-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createChannel()">Create Channel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Agent -->
+<div class="modal-overlay" id="user-modal" onclick="closeModalOnBg(event,'user-modal')">
+  <div class="modal">
+    <div class="modal-title">👤 Add New Agent</div>
+    <div class="field-wrap"><label class="field-label">Full Name</label><input class="field-input" type="text" id="new-u-name" placeholder="Agent's full name"></div>
+    <div class="field-wrap"><label class="field-label">Username</label><input class="field-input" type="text" id="new-u-username" placeholder="Unique username"></div>
+    <div class="field-wrap"><label class="field-label">Password</label><input class="field-input" type="password" id="new-u-pass" placeholder="Minimum 6 characters"></div>
+    <div class="field-wrap"><label class="field-label">Role</label>
+      <select class="field-input" id="new-u-role">
+        <option value="agent">Agent</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()">Add Agent</button>
+    </div>
+  </div>
+</div>
+
+<!-- KYC Lightbox -->
+<div class="modal-overlay" id="kyc-lightbox" onclick="closeModal('kyc-lightbox')">
+  <div style="position:relative;max-width:90vw;max-height:90vh">
+    <img id="kyc-lightbox-img" src="" alt="KYC Document" style="max-width:90vw;max-height:85vh;border-radius:var(--r-lg);display:block;border:1px solid var(--border-2)">
+    <button onclick="closeModal('kyc-lightbox')" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--border-2);color:var(--text-1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s" onmouseenter="this.style.background='var(--coral)'" onmouseleave="this.style.background='var(--s2)'">×</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast">
+  <span id="toast-icon" class="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script src="/js/app.js"></script>
+
+<script>
 /* ═══════════════════════════════════════════
-   TOKEN MANAGEMENT MASTER SYSTEM
-   Design: Dark professional dashboard
-   Palette: Navy · Teal · Gold · Coral · Violet
+   PAYMENTS — CLIENT-SIDE SEARCH & PAGINATION
+   After your fetch, call:
+     window._paySearchInit(rowsArray)
+   This stores the full list, applies search
+   filtering, and renders paginated results via
+     window._renderPayPage(pageItems, filtered, currentPage, total)
+   which you define in app.js to render #pay-list.
 ════════════════════════════════════════════ */
+(function () {
+  const PAGE_SIZE  = 10;
+  let _filtered    = [];
+  let _currentPage = 1;
 
-:root {
-  --navy:         #0a0f1e;
-  --navy-2:       #0f1629;
-  --navy-3:       #151d35;
-  --navy-4:       #1c2540;
-  --navy-5:       #243054;
-  --teal:         #00d4aa;
-  --teal-dark:    #00a885;
-  --teal-glow:    rgba(0,212,170,0.15);
-  --teal-light:   rgba(0,212,170,0.08);
-  --gold:         #f5c842;
-  --gold-dark:    #d4a825;
-  --gold-glow:    rgba(245,200,66,0.15);
-  --coral:        #ff6b6b;
-  --coral-dark:   #e05555;
-  --coral-glow:   rgba(255,107,107,0.15);
-  --violet:       #7c5cfc;
-  --violet-light: rgba(124,92,252,0.15);
-  --bg:           #060b18;
-  --s1:           #0d1526;
-  --s2:           #111c30;
-  --s3:           #162038;
-  --s4:           #1a2640;
-  --text-1:       #f0f4ff;
-  --text-2:       #8899bb;
-  --text-3:       #4a5878;
-  --border:       rgba(255,255,255,0.07);
-  --border-2:     rgba(255,255,255,0.12);
-  --border-teal:  rgba(0,212,170,0.3);
-  --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
-  --shadow-lg:    0 8px 40px rgba(0,0,0,0.6);
-  --shadow-teal:  0 4px 24px rgba(0,212,170,0.25);
-  --grad-teal:    linear-gradient(135deg, #00d4aa, #00a8c8);
-  --grad-gold:    linear-gradient(135deg, #f5c842, #ff9a3c);
-  --grad-coral:   linear-gradient(135deg, #ff6b6b, #ee5a24);
-  --grad-violet:  linear-gradient(135deg, #7c5cfc, #5a3fd4);
-  --grad-brand:   linear-gradient(90deg, #00d4aa, #7c5cfc, #f5c842);
-  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-xl: 20px;  --r-2xl: 28px;
-}
+  /* Called from app.js after fetch completes */
+  window._paySearchInit = function (allPayments) {
+    window._allPayments = allPayments || [];
+    _currentPage = 1;
+    _applyFilter();
+  };
 
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;font-size:14px;line-height:1.5;overflow-x:hidden;}
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+  /* Bound to oninput on #pay-search */
+  window.filterPayments = function () {
+    _currentPage = 1;
+    _applyFilter();
+    const q = document.getElementById('pay-search').value.trim();
+    document.getElementById('pay-search-clear').style.display = q ? 'block' : 'none';
+  };
 
-/* ── AUTH ─────────────────────────────── */
-.auth-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:var(--navy);}
-.auth-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(0,212,170,0.13) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 80%,rgba(124,92,252,0.1) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 50% 50%,rgba(245,200,66,0.05) 0%,transparent 70%);animation:meshMove 8s ease-in-out infinite alternate;}
-.auth-bg::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,170,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,0.035) 1px,transparent 1px);background-size:48px 48px;}
-@keyframes meshMove{from{transform:scale(1) rotate(0deg);}to{transform:scale(1.08) rotate(1.5deg);}}
+  window.clearPaySearch = function () {
+    document.getElementById('pay-search').value = '';
+    document.getElementById('pay-search-clear').style.display = 'none';
+    _currentPage = 1;
+    _applyFilter();
+  };
 
-.auth-card{position:relative;z-index:10;width:440px;background:var(--s2);border:1px solid var(--border-2);border-radius:var(--r-2xl);padding:48px 44px;box-shadow:var(--shadow-lg),0 0 0 1px rgba(0,212,170,0.07);animation:cardIn 0.6s cubic-bezier(0.22,1,0.36,1);}
-@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+  window.changePayPage = function (delta) {
+    const totalPages = Math.max(1, Math.ceil(_filtered.length / PAGE_SIZE));
+    _currentPage = Math.min(Math.max(1, _currentPage + delta), totalPages);
+    _render();
+  };
 
-.auth-brand{display:flex;align-items:center;gap:16px;margin-bottom:10px;}
-.auth-brand-icon{width:52px;height:52px;border-radius:var(--r-md);background:var(--grad-teal);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:var(--shadow-teal);flex-shrink:0;}
-.auth-brand-text h1{font-family:'Sora',sans-serif;font-size:16px;font-weight:800;color:var(--text-1);line-height:1.2;letter-spacing:-0.3px;}
-.auth-brand-text span{font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:1.2px;}
-.auth-divider{height:1px;background:var(--border);margin:20px 0 24px;}
-.auth-heading{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;margin-bottom:4px;color:var(--text-1);}
-.auth-sub{font-size:13px;color:var(--text-2);margin-bottom:28px;}
-.alert-error{background:var(--coral-glow);border:1px solid rgba(255,107,107,0.3);color:#ff9090;border-radius:var(--r-sm);padding:10px 14px;font-size:13px;margin-bottom:16px;display:none;}
-
-/* ── FIELDS ───────────────────────────── */
-.field-wrap{margin-bottom:18px;}
-.field-label{display:block;font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;}
-.field-input{width:100%;padding:12px 16px;background:var(--s3);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text-1);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:all 0.2s;}
-.field-input::placeholder{color:var(--text-3);}
-.field-input:focus{border-color:var(--teal);background:var(--s4);box-shadow:0 0 0 3px var(--teal-glow);}
-select.field-input{cursor:pointer;}
-select.field-input option{background:var(--s2);}
-
-/* ── BUTTONS ──────────────────────────── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:var(--r-sm);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s;text-decoration:none;white-space:nowrap;}
-.btn-full{width:100%;}
-.btn-primary{background:var(--grad-teal);color:var(--navy);box-shadow:var(--shadow-teal);}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,212,170,0.4);}
-.btn-secondary{background:var(--s3);border:1.5px solid var(--border-2);color:var(--text-2);}
-.btn-secondary:hover{border-color:var(--teal);color:var(--teal);}
-.btn-logout{background:none;border:1px solid var(--border);color:var(--text-2);font-size:12px;padding:7px 14px;border-radius:var(--r-sm);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
-.btn-logout:hover{border-color:var(--coral);color:var(--coral);}
-
-/* ── NAVBAR ───────────────────────────── */
-.navbar{position:sticky;top:0;z-index:200;min-height:64px;background:rgba(9,14,30,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:8px;flex-wrap:wrap;}
-.navbar::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad-brand);}
-.nav-brand{display:flex;align-items:center;gap:12px;flex-shrink:0;}
-.nav-brand-icon{width:36px;height:36px;border-radius:var(--r-sm);background:var(--grad-teal);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 12px rgba(0,212,170,0.3);flex-shrink:0;}
-.nav-brand-text{display:flex;flex-direction:column;}
-.nav-brand-text strong{font-family:'Sora',sans-serif;font-size:12px;font-weight:800;color:var(--text-1);line-height:1.1;letter-spacing:-0.2px;}
-.nav-brand-text small{font-size:10px;color:var(--teal);text-transform:uppercase;letter-spacing:0.8px;font-weight:500;}
-.nav-tabs{display:flex;align-items:center;gap:2px;flex:1;padding:0 8px;overflow-x:auto;scrollbar-width:none;min-width:0;}.nav-tabs::-webkit-scrollbar{display:none;}
-.nav-tab{position:relative;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:var(--r-sm);font-family:'Sora',sans-serif;font-size:12px;font-weight:500;color:var(--text-2);background:none;border:none;cursor:pointer;transition:all 0.2s;white-space:nowrap;flex-shrink:0;}
-.nav-tab:hover{color:var(--text-1);background:var(--s3);}
-.nav-tab.active{color:var(--teal);background:var(--teal-light);font-weight:600;border:1px solid rgba(0,212,170,0.15);}
-.unread-pill{background:var(--coral);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;min-width:17px;text-align:center;animation:pop 0.3s cubic-bezier(0.34,1.56,0.64,1);}
-@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
-.nav-user{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.nav-avatar{width:36px;height:36px;border-radius:50%;background:var(--grad-teal);display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:800;font-size:14px;font-family:'Sora',sans-serif;flex-shrink:0;border:2px solid var(--border-2);}
-.nav-name{font-size:13px;font-weight:600;color:var(--text-1);}
-.nav-role{font-size:10px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:0.8px;}
-
-/* ── PANELS ───────────────────────────── */
-.panel{display:none;}
-.panel.active{display:block;}
-.panel-scroll{padding:28px 32px;max-width:1400px;margin:0 auto;}
-
-/* ── STAT CARDS ───────────────────────── */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
-.stat-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;position:relative;overflow:hidden;transition:transform 0.2s,border-color 0.2s;}
-.stat-card:hover{transform:translateY(-3px);}
-.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-.stat-card.c-teal::before{background:var(--grad-teal);}
-.stat-card.c-gold::before{background:var(--grad-gold);}
-.stat-card.c-coral::before{background:var(--grad-coral);}
-.stat-card.c-violet::before{background:var(--grad-violet);}
-.stat-card:hover.c-teal{border-color:rgba(0,212,170,0.3);}
-.stat-card:hover.c-gold{border-color:rgba(245,200,66,0.3);}
-.stat-card:hover.c-coral{border-color:rgba(255,107,107,0.3);}
-.stat-card:hover.c-violet{border-color:rgba(124,92,252,0.3);}
-.stat-icon{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;}
-.stat-icon.c-teal{background:var(--teal-glow);}
-.stat-icon.c-gold{background:var(--gold-glow);}
-.stat-icon.c-coral{background:var(--coral-glow);}
-.stat-icon.c-violet{background:var(--violet-light);}
-.stat-value{font-family:'Sora',sans-serif;font-size:28px;font-weight:700;color:var(--text-1);line-height:1;margin-bottom:5px;letter-spacing:-0.5px;}
-.stat-value.mono{font-family:'JetBrains Mono',monospace;font-size:22px;}
-.stat-label{font-size:12px;color:var(--text-2);font-weight:500;}
-
-/* ── CARD ─────────────────────────────── */
-.card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:20px;overflow:hidden;}
-.card-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);}
-.card-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;color:var(--text-1);display:flex;align-items:center;gap:10px;}
-.title-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);}
-.card-bd{padding:24px;}
-
-/* ── ADD TOKEN FORM ───────────────────── */
-.add-token-grid{display:grid;grid-template-columns:1fr 200px auto;gap:16px;align-items:end;}
-.token-textarea{width:100%;padding:12px 16px;background:var(--s3);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text-1);font-family:'JetBrains Mono',monospace;font-size:12px;resize:vertical;min-height:80px;outline:none;transition:all 0.2s;}
-.token-textarea::placeholder{color:var(--text-3);}
-.token-textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-glow);}
-.btn-add-token{display:flex;align-items:center;gap:8px;padding:13px 22px;background:var(--grad-teal);color:var(--navy);border:none;border-radius:var(--r-sm);font-family:'Sora',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-teal);transition:all 0.2s;white-space:nowrap;}
-.btn-add-token:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,212,170,0.4);}
-
-/* ── DUE BAR ──────────────────────────── */
-.due-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:linear-gradient(135deg,rgba(245,200,66,0.07),rgba(255,154,60,0.05));border:1px solid rgba(245,200,66,0.2);border-radius:var(--r-lg);margin-bottom:20px;position:relative;overflow:hidden;}
-.due-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grad-gold);border-radius:4px 0 0 4px;}
-.due-label{display:flex;align-items:center;gap:10px;font-family:'Sora',sans-serif;font-weight:600;font-size:14px;color:var(--gold);}
-.due-amount{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--gold);text-shadow:0 0 20px var(--gold-glow);}
-
-/* ── FILTER BAR ───────────────────────── */
-.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:16px 22px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:20px;}
-.filter-bar .field-input{padding:9px 13px;font-size:13px;background:var(--s3);}
-.filter-search{flex:1;min-width:160px;}
-.btn-filter{padding:9px 18px;background:var(--teal);color:var(--navy);border:none;border-radius:var(--r-sm);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
-.btn-filter:hover{background:var(--teal-dark);}
-.btn-csv{padding:9px 14px;background:var(--s3);border:1px solid var(--border-2);color:var(--text-2);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:all 0.2s;}
-.btn-csv:hover{border-color:var(--teal);color:var(--teal);}
-.btn-clear{padding:9px 13px;background:none;border:1px solid var(--border);color:var(--text-3);border-radius:var(--r-sm);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
-.btn-clear:hover{border-color:var(--coral);color:var(--coral);}
-.refresh-badge{display:flex;align-items:center;gap:7px;margin-left:auto;font-size:12px;color:var(--teal);background:var(--teal-light);padding:6px 12px;border-radius:20px;border:1px solid var(--border-teal);}
-.pulse-dot{width:7px;height:7px;background:var(--teal);border-radius:50%;animation:pulse 2s infinite;box-shadow:0 0 6px var(--teal);}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.75)}}
-
-/* ── TABS ─────────────────────────────── */
-.tab-strip{display:flex;border-bottom:1px solid var(--border);padding:0 24px;background:var(--s2);}
-.tab-btn{display:flex;align-items:center;gap:8px;padding:14px 18px;font-family:'Sora',sans-serif;font-size:13px;font-weight:500;color:var(--text-2);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s;}
-.tab-btn:hover{color:var(--text-1);}
-.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600;}
-.tab-count{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:var(--teal);color:var(--navy);}
-.tab-count.muted{background:var(--s4);color:var(--text-3);}
-
-/* ── TABLE ────────────────────────────── */
-.table-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;}
-thead tr{background:var(--s3);border-bottom:1px solid var(--border);}
-th{padding:11px 18px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);}
-td{padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;transition:background 0.12s;}
-tbody tr:hover td{background:var(--s3);}
-tbody tr:last-child td{border-bottom:none;}
-.cell-ref{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);font-weight:500;}
-.cell-details{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-2);max-width:240px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}
-.cell-charge{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--gold);}
-.cell-author{font-weight:600;color:var(--text-1);}
-.cell-date{font-size:12px;color:var(--text-2);white-space:nowrap;}
-.act-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Sora',sans-serif;transition:all 0.2s;margin-right:4px;white-space:nowrap;}
-.act-complete{background:rgba(0,212,170,0.1);color:var(--teal);border:1px solid rgba(0,212,170,0.2);}
-.act-complete:hover{background:var(--teal);color:var(--navy);}
-.act-reactivate{background:rgba(245,200,66,0.1);color:var(--gold);border:1px solid rgba(245,200,66,0.2);}
-.act-reactivate:hover{background:var(--gold);color:var(--navy);}
-.act-delete{background:var(--coral-glow);color:var(--coral);border:1px solid rgba(255,107,107,0.2);}
-.act-delete:hover{background:var(--coral);color:white;}
-.empty-state{text-align:center;padding:56px 24px;color:var(--text-3);}
-.empty-state .ei{font-size:40px;display:block;margin-bottom:14px;opacity:0.35;}
-.empty-state p{font-size:14px;}
-
-/* ── KYC ──────────────────────────────── */
-.kyc-thumb{width:52px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid var(--border-2);display:block;transition:all 0.2s;}
-.kyc-thumb:hover{border-color:var(--teal);box-shadow:var(--shadow-teal);transform:scale(1.06);}
-.kyc-upload-label{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--violet-light);color:var(--violet);border:1px dashed rgba(124,92,252,0.4);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-.kyc-upload-label:hover{background:var(--violet);color:white;border-style:solid;}
-.kyc-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--teal);background:var(--teal-light);padding:3px 9px;border-radius:20px;border:1px solid var(--border-teal);margin-top:4px;}
-.kyc-banner{display:flex;align-items:center;gap:16px;padding:16px 20px;background:linear-gradient(135deg,rgba(124,92,252,0.09),rgba(0,212,170,0.06));border:1px solid rgba(124,92,252,0.25);border-left:4px solid var(--violet);border-radius:var(--r-md);margin-bottom:16px;cursor:pointer;transition:all 0.2s;animation:slideIn 0.4s cubic-bezier(0.22,1,0.36,1);}
-.kyc-banner:hover{box-shadow:0 4px 20px rgba(124,92,252,0.2);transform:translateX(4px);}
-@keyframes slideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
-.kyc-banner-icon{font-size:28px;}
-.kyc-banner-title{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--text-1);}
-.kyc-banner-sub{font-size:12px;color:var(--text-2);margin-top:3px;}
-.kyc-banner-cta{margin-left:auto;font-size:12px;font-weight:600;color:var(--violet);white-space:nowrap;}
-
-/* ── CHAT LAYOUT ──────────────────────── */
-.chat-layout{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 64px);}
-.chat-sidebar{background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
-.sidebar-top{padding:18px 16px 10px;border-bottom:1px solid var(--border);}
-.sidebar-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
-.sidebar-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-3);padding:16px 16px 6px;}
-.sidebar-scroll{flex:1;overflow-y:auto;padding:4px 8px;}
-.sidebar-btn-new{width:26px;height:26px;background:var(--teal-light);border:1px solid var(--border-teal);border-radius:6px;color:var(--teal);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
-.sidebar-btn-new:hover{background:var(--teal);color:var(--navy);}
-.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);cursor:pointer;transition:all 0.15s;color:var(--text-2);font-size:13px;}
-.sidebar-item:hover{background:var(--s3);color:var(--text-1);}
-.sidebar-item.active{background:var(--teal-light);color:var(--teal);font-weight:600;border:1px solid rgba(0,212,170,0.15);}
-.sidebar-item-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sidebar-unread{background:var(--coral);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;min-width:17px;text-align:center;}
-.dm-item-info{flex:1;min-width:0;}
-.dm-item-name{font-size:13px;font-weight:600;color:var(--text-1);}
-.dm-item-preview{font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
-.dm-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:700;font-size:12px;font-family:'Sora',sans-serif;flex-shrink:0;}
-.sidebar-footer{border-top:1px solid var(--border);padding:12px 16px;}
-.online-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px;}
-.member-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;color:var(--text-2);}
-.member-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-
-/* ── CHAT MAIN ────────────────────────── */
-.chat-main{display:flex;flex-direction:column;background:var(--navy-2);overflow:hidden;}
-.chat-topbar{display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--s1);flex-shrink:0;}
-.chat-topbar-left{display:flex;align-items:center;gap:14px;}
-.chat-topbar-icon{font-size:22px;}
-.chat-topbar-name{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--text-1);}
-.chat-topbar-desc{font-size:12px;color:var(--text-3);margin-top:2px;}
-.messages-area{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:2px;}
-.date-divider{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--text-3);margin:14px 0;}
-.date-divider::before,.date-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-.msg-row{display:flex;align-items:flex-start;gap:12px;padding:4px 8px;border-radius:var(--r-sm);transition:background 0.12s;}
-.msg-row:hover{background:var(--s3);}
-.msg-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--navy);font-weight:700;font-size:13px;font-family:'Sora',sans-serif;flex-shrink:0;margin-top:2px;}
-.msg-avatar.hidden{visibility:hidden;}
-.msg-body{flex:1;}
-.msg-meta{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
-.msg-author{font-weight:700;font-size:13px;color:var(--text-1);font-family:'Sora',sans-serif;}
-.msg-time{font-size:11px;color:var(--text-3);}
-.msg-text{font-size:14px;line-height:1.6;color:var(--text-1);}
-.msg-text.token-alert{background:linear-gradient(135deg,rgba(0,212,170,0.06),rgba(124,92,252,0.04));border:1px solid var(--border-teal);border-left:3px solid var(--teal);border-radius:var(--r-sm);padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;color:var(--text-2);}
-.chat-input-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0;}
-.chat-input-wrap{display:flex;align-items:flex-end;gap:12px;background:var(--s3);border:1.5px solid var(--border);border-radius:var(--r-md);padding:10px 16px;transition:all 0.2s;}
-.chat-input-wrap:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-glow);}
-.chat-textarea{flex:1;background:none;border:none;outline:none;font-family:'Inter',sans-serif;font-size:14px;color:var(--text-1);resize:none;min-height:22px;max-height:120px;line-height:1.5;}
-.chat-textarea::placeholder{color:var(--text-3);}
-.send-btn{width:36px;height:36px;background:var(--grad-teal);border:none;border-radius:var(--r-sm);color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all 0.2s;box-shadow:var(--shadow-teal);}
-.send-btn:hover{transform:scale(1.08);box-shadow:0 4px 16px rgba(0,212,170,0.4);}
-.input-hint{font-size:11px;color:var(--text-3);margin-top:7px;}
-.dm-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);gap:12px;}
-.dm-empty-icon{font-size:48px;opacity:0.25;}
-
-/* ── ADMIN ────────────────────────────── */
-.admin-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px;}
-.admin-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.admin-stat{background:var(--s3);border:1px solid var(--border);border-radius:var(--r-md);padding:18px;text-align:center;}
-.admin-stat-val{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--teal);margin-bottom:5px;}
-.admin-stat-label{font-size:12px;color:var(--text-2);}
-
-/* ── MODALS ───────────────────────────── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.25s;}
-.modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--s2);border:1px solid var(--border-2);border-radius:var(--r-xl);padding:32px 36px;width:440px;box-shadow:var(--shadow-lg);transform:scale(0.94) translateY(8px);transition:transform 0.25s cubic-bezier(0.22,1,0.36,1);}
-.modal-overlay.open .modal{transform:scale(1) translateY(0);}
-.modal-title{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:22px;display:flex;align-items:center;gap:10px;}
-.modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end;}
-#kyc-lightbox{background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);}
-
-/* ── TOAST ────────────────────────────── */
-.toast{position:fixed;bottom:28px;right:28px;display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:var(--r-md);font-size:14px;font-weight:500;font-family:'Sora',sans-serif;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:all 0.35s cubic-bezier(0.22,1,0.36,1);z-index:3000;max-width:320px;border:1px solid var(--border-2);}
-.toast.show{transform:translateY(0);opacity:1;}
-.toast.success{background:var(--s2);border-left:4px solid var(--teal);color:var(--text-1);}
-.toast.error{background:var(--s2);border-left:4px solid var(--coral);color:var(--text-1);}
-.toast.warn{background:var(--s2);border-left:4px solid var(--gold);color:var(--text-1);}
-
-/* ── SCROLLBAR ────────────────────────── */
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--s4);border-radius:3px;}
-::-webkit-scrollbar-thumb:hover{background:var(--border-2);}
-
-/* ── RESPONSIVE ───────────────────────── */
-@media(max-width:1024px){.stat-grid{grid-template-columns:repeat(2,1fr)}.chat-layout{grid-template-columns:1fr}.chat-sidebar{display:none}.admin-grid{grid-template-columns:1fr}}
-@media(max-width:900px){
-  .nav-tab { padding:6px 9px; font-size:11px; gap:4px; }
-  .nav-tab span { display:none; } /* hide emoji labels if needed */
-}
-@media(max-width:768px){
-  .add-token-grid{grid-template-columns:1fr}
-  .panel-scroll{padding:16px}
-  .navbar{padding:0 10px;gap:6px;min-height:56px;}
-  .nav-brand-text{display:none}
-  .nav-brand{gap:8px;}
-  .nav-tabs{padding:0 4px;gap:1px;}
-  .nav-tab{padding:6px 8px;font-size:11px;}
-  .nav-user{gap:6px;}
-  .stat-grid{grid-template-columns:1fr 1fr}
-  .nav-user-name,.nav-role-badge{display:none;}
-}
-@media(max-width:480px){
-  .nav-brand-icon{width:28px;height:28px;font-size:13px;}
-  .nav-tab{padding:5px 7px;font-size:10px;gap:3px;}
-}
-
-/* ══════════════════════════════
-   SETTINGS PANEL
-══════════════════════════════ */
-.settings-page-header { margin-bottom: 24px; }
-.settings-title { font-family:'Sora',sans-serif; font-size:26px; font-weight:800; color:var(--text-1); letter-spacing:-0.5px; }
-.settings-sub { font-size:14px; color:var(--text-2); margin-top:4px; }
-.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-.settings-desc { font-size:13px; color:var(--text-2); margin-bottom:18px; line-height:1.6; }
-
-/* System stats */
-.sys-stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-.sys-stat { background:var(--s3); border:1px solid var(--border); border-radius:var(--r-md); padding:16px; text-align:center; }
-.sys-stat-val { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:600; color:var(--teal); margin-bottom:4px; }
-.sys-stat-label { font-size:11px; color:var(--text-2); font-weight:500; }
-
-/* Backup/Restore */
-.backup-section { margin-bottom:8px; }
-.backup-section-title { font-family:'Sora',sans-serif; font-size:14px; font-weight:700; color:var(--text-1); margin-bottom:8px; }
-.backup-divider { height:1px; background:var(--border); margin:20px 0; }
-.restore-checkboxes { display:flex; flex-direction:column; gap:10px; margin:14px 0; }
-.check-row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text-2); cursor:pointer; }
-.check-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--teal); cursor:pointer; }
-.restore-drop {
-  border:2px dashed var(--border-2); border-radius:var(--r-md); padding:32px 20px;
-  text-align:center; cursor:pointer; transition:all 0.2s; margin-top:4px;
-  background:var(--s3);
-}
-.restore-drop:hover, .restore-drop.drag-over { border-color:var(--teal); background:var(--teal-light); }
-.restore-drop-icon { font-size:32px; margin-bottom:10px; opacity:0.6; }
-.restore-drop-text { font-weight:600; font-size:14px; color:var(--text-1); }
-.restore-drop-sub { font-size:12px; color:var(--text-3); margin-top:4px; }
-.restore-preview-box { background:var(--s3); border:1px solid var(--border-teal); border-radius:var(--r-md); padding:18px; margin-top:12px; }
-.restore-file-info { font-size:13px; color:var(--text-2); line-height:1.7; }
-.restore-file-info strong { color:var(--teal); }
-
-/* Admin password reset */
-@media(max-width:900px) { .settings-grid{grid-template-columns:1fr;} }
-
-/* ══════════════════════════════
-   ABOUT PANEL
-══════════════════════════════ */
-.about-wrap { max-width:960px; margin:0 auto; }
-
-.about-hero {
-  display:flex; align-items:center; gap:24px; margin-bottom:32px;
-  padding:32px 36px;
-  background:linear-gradient(135deg,rgba(0,212,170,0.08),rgba(124,92,252,0.06));
-  border:1px solid var(--border-2); border-radius:var(--r-xl);
-  position:relative; overflow:hidden;
-}
-.about-hero::before {
-  content:''; position:absolute; right:-80px; top:-80px;
-  width:240px; height:240px; border-radius:50%;
-  background:radial-gradient(circle,rgba(0,212,170,0.1),transparent 70%);
-}
-.about-hero-logo {
-  width:72px; height:72px; border-radius:20px; flex-shrink:0;
-  background:var(--grad-teal); display:flex; align-items:center; justify-content:center;
-  font-size:36px; box-shadow:var(--shadow-teal);
-}
-.about-hero-text h1 { font-family:'Sora',sans-serif; font-size:28px; font-weight:800; color:var(--text-1); line-height:1.15; letter-spacing:-0.5px; }
-.about-version-badge {
-  display:inline-block; margin-top:10px;
-  background:var(--teal-light); color:var(--teal);
-  border:1px solid var(--border-teal); border-radius:20px;
-  padding:4px 14px; font-size:12px; font-weight:600; letter-spacing:0.4px;
-}
-
-.about-dev-card {
-  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px;
-  background:var(--s2); border:1px solid var(--border-2); border-radius:var(--r-lg);
-  padding:24px 28px; margin-bottom:32px;
-}
-.about-dev-left { display:flex; align-items:center; gap:18px; }
-.about-dev-icon { font-size:36px; flex-shrink:0; }
-.about-dev-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-3); margin-bottom:4px; }
-.about-dev-name { font-family:'Sora',sans-serif; font-size:20px; font-weight:800; color:var(--text-1); }
-.about-dev-sub { font-size:13px; color:var(--text-2); margin-top:3px; }
-.about-dev-contact { display:flex; flex-direction:column; gap:10px; }
-.about-contact-row { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text-2); }
-.about-contact-icon { font-size:18px; }
-.about-contact-link { color:var(--teal); text-decoration:none; font-weight:600; font-family:'JetBrains Mono',monospace; }
-.about-contact-link:hover { text-decoration:underline; }
-
-.about-section-title {
-  font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:var(--text-1);
-  margin:0 0 16px; padding-bottom:12px; border-bottom:1px solid var(--border);
-}
-
-.about-features-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:32px; }
-.about-feature-card {
-  background:var(--s2); border:1px solid var(--border); border-radius:var(--r-lg);
-  padding:20px; display:flex; align-items:flex-start; gap:14px;
-  transition:border-color 0.2s, transform 0.2s;
-}
-.about-feature-card:hover { border-color:var(--border-2); transform:translateY(-2px); }
-.about-feature-icon { width:42px; height:42px; border-radius:var(--r-sm); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
-.about-feature-title { font-family:'Sora',sans-serif; font-size:14px; font-weight:700; color:var(--text-1); margin-bottom:5px; }
-.about-feature-desc { font-size:12px; color:var(--text-2); line-height:1.6; }
-
-.about-tech-grid { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:32px; }
-.about-tech-pill {
-  background:var(--s3); border:1px solid var(--border-2); color:var(--text-2);
-  border-radius:20px; padding:6px 16px; font-size:12px; font-weight:600;
-  font-family:'JetBrains Mono',monospace; transition:all 0.2s;
-}
-.about-tech-pill:hover { border-color:var(--teal); color:var(--teal); }
-
-.about-footer { text-align:center; padding:24px; border-top:1px solid var(--border); color:var(--text-3); font-size:13px; }
-
-@media(max-width:768px) { .about-features-grid{grid-template-columns:1fr} .about-dev-card{flex-direction:column} .sys-stats-grid{grid-template-columns:1fr 1fr} }
-
-/* ══════════════════════════════
-   PAYMENTS PANEL
-══════════════════════════════ */
-.pay-form-card { margin-bottom: 0; }
-
-.pay-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.pay-field-full  { grid-column: 1 / -1; }
-.pay-field-half  { grid-column: span 1; }
-
-.pay-details-area {
-  width: 100%;
-  min-height: 120px;
-  resize: vertical;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text-1);
-  background: var(--s3);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 14px 16px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.pay-details-area:focus { border-color: var(--teal); }
-
-.pay-amount-input {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--gold);
-}
-
-/* Drop zone */
-.pay-drop-zone {
-  border: 2px dashed var(--border-2);
-  border-radius: var(--r-md);
-  padding: 28px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--s3);
-  min-height: 130px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-.pay-drop-zone:hover, .pay-drop-zone.drag-over {
-  border-color: var(--teal);
-  background: var(--teal-light);
-}
-.pay-drop-icon  { font-size: 30px; margin-bottom: 8px; opacity: 0.6; }
-.pay-drop-text  { font-weight: 600; font-size: 14px; color: var(--text-1); }
-.pay-drop-sub   { font-size: 12px; color: var(--text-3); margin-top: 4px; }
-
-/* Preview */
-.pay-preview-img {
-  max-height: 140px;
-  max-width: 100%;
-  border-radius: var(--r-sm);
-  object-fit: contain;
-  border: 1px solid var(--border);
-}
-.pay-preview-name {
-  font-size: 12px;
-  color: var(--text-2);
-  margin-top: 8px;
-}
-.pay-remove-btn {
-  margin-top: 8px;
-  background: var(--coral-glow);
-  color: var(--coral);
-  border: 1px solid var(--coral);
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-.pay-remove-btn:hover { background: var(--coral); color: white; }
-
-.pay-submit-btn { min-width: 180px; }
-
-/* Payment list items */
-.pay-item {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 16px;
-  align-items: start;
-  transition: background 0.15s;
-}
-.pay-item:last-child { border-bottom: none; }
-.pay-item:hover { background: var(--s3); }
-
-.pay-item-ref {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--teal);
-  font-weight: 600;
-  white-space: nowrap;
-  padding-top: 2px;
-}
-
-.pay-item-body { flex: 1; min-width: 0; }
-.pay-item-details {
-  font-size: 14px;
-  color: var(--text-1);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin-bottom: 8px;
-}
-.pay-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text-3);
-}
-.pay-item-amount {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--gold);
-  white-space: nowrap;
-}
-.pay-item-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-.pay-screenshot-thumb {
-  width: 64px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-.pay-screenshot-thumb:hover { transform: scale(1.05); }
-
-/* Lightbox */
-.pay-lightbox {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 2000;
-  display: flex; align-items: center; justify-content: center;
-  cursor: zoom-out;
-  animation: fadeIn 0.2s;
-}
-.pay-lightbox img {
-  max-width: 92vw;
-  max-height: 92vh;
-  border-radius: var(--r-md);
-  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-}
-.pay-lightbox-close {
-  position: absolute; top: 20px; right: 24px;
-  color: white; font-size: 28px; cursor: pointer;
-  opacity: 0.7; transition: opacity 0.2s;
-}
-.pay-lightbox-close:hover { opacity: 1; }
-
-@keyframes fadeIn { from{opacity:0} to{opacity:1} }
-
-@media(max-width: 640px) {
-  .pay-form-grid { grid-template-columns: 1fr; }
-  .pay-field-half { grid-column: 1 / -1; }
-  .pay-item { grid-template-columns: auto 1fr; }
-  .pay-item-right { grid-column: 1 / -1; flex-direction: row; }
-}
-
-/* Payment screenshot view/upload in history */
-.pay-ss-section {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-.pay-view-btn {
-  background: var(--teal-light);
-  color: var(--teal);
-  border: 1px solid var(--border-teal);
-  border-radius: 6px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.pay-view-btn:hover { background: var(--teal); color: var(--navy); }
-
-.pay-remove-ss-btn {
-  background: var(--coral-glow);
-  color: var(--coral);
-  border: 1px solid var(--coral);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-.pay-remove-ss-btn:hover { background: var(--coral); color: white; }
-
-.pay-upload-label {
-  background: var(--s3);
-  color: var(--text-2);
-  border: 1px dashed var(--border-2);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: inline-block;
-}
-.pay-upload-label:hover { border-color: var(--teal); color: var(--teal); }
-
-.pay-no-ss {
-  font-size: 11px;
-  color: var(--text-3);
-}
-
-/* ═══════════════════════════════════════════════════════
-   MOBILE REDESIGN  — applies only at ≤768px
-   Desktop layout is completely unchanged above this point
-════════════════════════════════════════════════════════ */
-
-/* ── Bottom Nav ──────────────────────────────── */
-.mobile-bottom-nav {
-  display: none; /* hidden on desktop */
-}
-
-@media (max-width: 768px) {
-
-  /* ── Global ───────────────────────────────── */
-  body { font-size: 15px; }
-
-  /* ── Auth card ────────────────────────────── */
-  .auth-card {
-    width: 100%;
-    max-width: 100%;
-    min-height: 100vh;
-    border-radius: 0;
-    padding: 48px 24px 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+  function _applyFilter () {
+    const raw = window._allPayments || [];
+    const q   = (document.getElementById('pay-search')?.value || '').toLowerCase().trim();
+    _filtered = q
+      ? raw.filter(p =>
+          (p.details        || '').toLowerCase().includes(q) ||
+          (p.payment_ref    || '').toLowerCase().includes(q) ||
+          (p.submitted_name || '').toLowerCase().includes(q) ||
+          String(p.amount   || '').includes(q)               ||
+          (p.payment_date   || '').includes(q))
+      : raw.slice();
+    _render();
   }
 
-  /* ── Navbar — keep slim, hide tabs ───────── */
-  .navbar {
-    height: 56px;
-    min-height: 56px;
-    padding: 0 16px;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-  }
-  .nav-tabs { display: none; } /* tabs moved to bottom nav */
-  .nav-user { gap: 10px; }
-  .nav-name, .nav-role { display: none; } /* space saved for mobile */
-  .btn-logout { display: none; } /* moved to More sheet */
+  function _render () {
+    const total      = _filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    _currentPage     = Math.min(_currentPage, totalPages);
+    const start      = (_currentPage - 1) * PAGE_SIZE;
+    const pageItems  = _filtered.slice(start, start + PAGE_SIZE);
 
-  /* ── Bottom nav bar ───────────────────────── */
-  .mobile-bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 68px;
-    background: rgba(6,11,24,0.99);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-top: 1.5px solid rgba(0,212,170,0.2);
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.7);
-    z-index: 300;
-    padding: 0 4px;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .mbn-tab {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 4px;
-    border-radius: 10px;
-    position: relative;
-    transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mbn-tab:active { background: rgba(0,212,170,0.08); }
-  .mbn-tab.active .mbn-icon { filter: none; }
-  .mbn-tab.active .mbn-label { color: var(--teal); }
-  .mbn-tab.active::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 32px; height: 2px;
-    background: var(--teal);
-    border-radius: 0 0 4px 4px;
-  }
-  .mbn-icon {
-    font-size: 24px;
-    line-height: 1;
-    opacity: 0.65;
-    filter: grayscale(20%);
-  }
-  .mbn-tab.active .mbn-icon { opacity: 1; filter: none; }
-  .mbn-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.55);
-    font-family: 'Sora', sans-serif;
-    letter-spacing: 0.2px;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-  }
-  .mbn-tab.active .mbn-label {
-    color: var(--teal);
-    text-shadow: 0 0 10px rgba(0,212,170,0.4);
-  }
-  .mbn-badge {
-    position: absolute;
-    top: 4px; right: calc(50% - 18px);
-    background: var(--coral);
-    color: white;
-    font-size: 9px;
-    font-weight: 700;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
-    border: 2px solid var(--navy);
+    /* Hand sliced page to your existing renderer */
+    if (typeof window._renderPayPage === 'function') {
+      window._renderPayPage(pageItems, _filtered, _currentPage, total);
+    }
+    _updatePagination(total, totalPages);
   }
 
-  /* ── More slide-up sheet ──────────────────── */
-  .mobile-more-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 400;
-    backdrop-filter: blur(4px);
-  }
-  .mobile-more-overlay.open { display: block; }
-  .mobile-more-sheet {
-    position: fixed;
-    bottom: -100%;
-    left: 0; right: 0;
-    background: var(--s2);
-    border-radius: 20px 20px 0 0;
-    border-top: 1px solid var(--border-2);
-    z-index: 500;
-    padding: 12px 0 calc(24px + env(safe-area-inset-bottom));
-    transition: bottom 0.32s cubic-bezier(0.32,0.72,0,1);
-  }
-  .mobile-more-sheet.open { bottom: 0; }
-  .mobile-more-handle {
-    width: 36px; height: 4px;
-    background: var(--border-2);
-    border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-  .mobile-more-user {
-    display: flex; align-items: center; gap: 14px;
-    padding: 12px 24px 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-  }
-  .mobile-more-avatar {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    background: var(--grad-teal);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--navy);
-    font-weight: 800; font-size: 18px;
-    font-family: 'Sora', sans-serif;
-  }
-  .mobile-more-name {
-    font-family: 'Sora', sans-serif;
-    font-weight: 700; font-size: 15px;
-    color: var(--text-1);
-  }
-  .mobile-more-role {
-    font-size: 11px; color: var(--teal);
-    text-transform: uppercase; letter-spacing: 0.8px;
-    font-weight: 600;
-  }
-  .mobile-more-items { padding: 0 12px; }
-  .mobile-more-item {
-    display: flex; align-items: center; gap: 14px;
-    width: 100%; padding: 15px 16px;
-    background: none; border: none;
-    border-radius: var(--r-md);
-    font-family: 'Sora', sans-serif;
-    font-size: 15px; font-weight: 500;
-    color: var(--text-1);
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobile-more-item:active { background: var(--s3); }
-  .mobile-more-item span:first-child { font-size: 20px; }
-  .mobile-more-logout { color: var(--coral); margin-top: 4px; }
+  function _updatePagination (total, totalPages) {
+    const pag     = document.getElementById('pay-pagination');
+    const prevBtn = document.getElementById('pay-prev-btn');
+    const nextBtn = document.getElementById('pay-next-btn');
+    const numWrap = document.getElementById('pay-page-numbers');
+    if (!pag) return;
 
-  /* ── Panels — add bottom padding for nav bar ─ */
-  .panel.active { display: block; }
-  .panel-scroll {
-    padding: 16px 16px calc(84px + 16px);
-    max-width: 100%;
+    pag.style.display = totalPages <= 1 ? 'none' : 'flex';
+    if (totalPages <= 1) return;
+
+    prevBtn.disabled = _currentPage === 1;
+    nextBtn.disabled = _currentPage === totalPages;
+
+    numWrap.innerHTML = '';
+    _pageRange(_currentPage, totalPages).forEach(p => {
+      if (p === '…') {
+        const el = document.createElement('span');
+        el.className = 'pay-page-ellipsis';
+        el.textContent = '…';
+        numWrap.appendChild(el);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'pay-page-num' + (p === _currentPage ? ' active' : '');
+        btn.textContent = p;
+        btn.onclick = () => { _currentPage = p; _render(); };
+        numWrap.appendChild(btn);
+      }
+    });
+
+    /* Results info line */
+    let info = pag.querySelector('.pay-results-info');
+    if (!info) {
+      info = document.createElement('div');
+      info.className = 'pay-results-info';
+      pag.appendChild(info);
+    }
+    const s = (_currentPage - 1) * PAGE_SIZE + 1;
+    const e = Math.min(_currentPage * PAGE_SIZE, total);
+    const q = document.getElementById('pay-search')?.value.trim();
+    info.textContent = q
+      ? `Showing ${s}–${e} of ${total} matching payment${total !== 1 ? 's' : ''}`
+      : `Showing ${s}–${e} of ${total} payment${total !== 1 ? 's' : ''}`;
   }
 
-  /* ── Stat cards — 2×2 grid ────────────────── */
-  .stat-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .stat-card { padding: 16px; }
-  .stat-value { font-size: 22px; }
-  .stat-value.mono { font-size: 17px; }
-  .stat-icon { width: 32px; height: 32px; font-size: 14px; margin-bottom: 10px; }
-
-  /* ── Add token form — stacked ──────────────── */
-  .add-token-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .btn-add-token { width: 100%; justify-content: center; padding: 15px; }
-
-  /* ── Due bar ──────────────────────────────── */
-  .due-bar { flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 18px; }
-  .due-amount { font-size: 22px; }
-
-  /* ── Filter bar — stacked ──────────────────── */
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 14px 16px;
-  }
-  .filter-bar .field-input { width: 100%; }
-  .filter-search { min-width: 0; }
-  .refresh-badge { margin-left: 0; align-self: flex-start; }
-  .filter-bar-btns {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-  }
-  .btn-filter, .btn-csv, .btn-clear { justify-content: center; }
-
-  /* ── Token table → cards ─────────────────── */
-  .table-wrap table,
-  .table-wrap thead,
-  .table-wrap tbody,
-  .table-wrap th,
-  .table-wrap td,
-  .table-wrap tr { display: block; }
-  .table-wrap thead { display: none; } /* hide column headers */
-  .table-wrap tbody tr {
-    background: var(--s2);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    margin-bottom: 12px;
-    padding: 14px 16px;
-    position: relative;
-  }
-  .table-wrap tbody tr:hover { background: var(--s3); }
-  .table-wrap td {
-    padding: 4px 0;
-    border: none;
-    font-size: 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .table-wrap td::before {
-    content: attr(data-label);
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-3);
-    min-width: 72px;
-    padding-top: 2px;
-    flex-shrink: 0;
-  }
-  /* Action buttons row */
-  .table-wrap td:last-child {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-  }
-  .table-wrap td:last-child::before { display: none; }
-  .act-btn { padding: 9px 16px; font-size: 13px; }
-
-  /* ── Chat layout — full screen, drawer sidebar ─ */
-  .chat-layout {
-    display: block;
-    height: calc(100vh - 56px - 62px);
-    position: relative;
-    overflow: hidden;
-  }
-  /* Sidebar becomes a fixed drawer — overrides display:none from 1024px rule */
-  .chat-sidebar,
-  #discussion-sidebar,
-  #messages-sidebar {
-    display: flex !important;
-    flex-direction: column;
-    position: fixed !important;
-    top: 56px !important;
-    left: -300px !important;
-    width: 280px !important;
-    height: calc(100vh - 56px) !important;
-    z-index: 350 !important;
-    transition: left 0.28s cubic-bezier(0.32,0.72,0,1) !important;
-    box-shadow: 4px 0 32px rgba(0,0,0,0.7) !important;
-    background: var(--s1) !important;
-    overflow: hidden !important;
-  }
-  .chat-sidebar.open,
-  #discussion-sidebar.open,
-  #messages-sidebar.open {
-    left: 0 !important;
-  }
-  .mobile-sidebar-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 340;
-    top: 56px;
-  }
-  .mobile-sidebar-overlay.open { display: block; }
-  /* Chat main fills full width */
-  .chat-main {
-    height: calc(100vh - 56px - 62px);
-    width: 100%;
-  }
-  /* Mobile sidebar toggle button */
-  .mobile-sidebar-btn {
-    display: flex;
-    align-items: center; justify-content: center;
-    width: 40px; height: 40px;
-    background: none; border: none;
-    color: var(--text-2); font-size: 20px;
-    cursor: pointer; border-radius: var(--r-sm);
-    margin-right: 8px; flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobile-sidebar-btn:active { background: var(--s3); }
-
-  .chat-topbar { padding: 10px 14px; }
-  .messages-area { padding: 12px 14px; }
-  .chat-input-area { padding: 10px 12px; }
-  .input-hint { display: none; } /* hide keyboard hint on mobile */
-
-  /* ── Admin panel ──────────────────────────── */
-  .admin-grid { grid-template-columns: 1fr; }
-
-  /* ── Settings ─────────────────────────────── */
-  .settings-grid { grid-template-columns: 1fr; }
-  .sys-stats-grid { grid-template-columns: 1fr 1fr; }
-
-  /* ── About ────────────────────────────────── */
-  .about-hero { padding: 24px 20px; gap: 16px; }
-  .about-hero-text h1 { font-size: 20px; }
-  .about-features-grid { grid-template-columns: 1fr; }
-  .about-dev-card { flex-direction: column; gap: 16px; }
-
-  /* ── Payments ─────────────────────────────── */
-  .pay-form-grid { grid-template-columns: 1fr; }
-  .pay-field-half { grid-column: 1 / -1; }
-  .pay-item { grid-template-columns: 1fr; gap: 10px; }
-  .pay-item-right { flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .pay-item-amount { font-size: 16px; }
-
-  /* ── Modals ───────────────────────────────── */
-  .modal-overlay { align-items: flex-end; }
-  .modal {
-    width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  function _pageRange (cur, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (cur <= 4)         return [1, 2, 3, 4, 5, '…', total];
+    if (cur >= total - 3) return [1, '…', total-4, total-3, total-2, total-1, total];
+    return [1, '…', cur-1, cur, cur+1, '…', total];
   }
 
-} /* end @media 768px */
-
-/* Extra small phones */
-@media (max-width: 380px) {
-  .stat-value { font-size: 19px; }
-  .stat-value.mono { font-size: 14px; }
-  .mbn-label { font-size: 9px; }
-}
-
-/* Show DM sidebar btn on mobile */
-@media (max-width: 768px) {
-  #dm-sidebar-btn { display: flex !important; }
-  .mobile-sidebar-btn { display: flex; }
-  /* Hide desktop sidebar btn */
-}
-@media (min-width: 769px) {
-  .mobile-bottom-nav { display: none !important; }
-  .mobile-sidebar-btn { display: none; }
-  .mobile-more-overlay, .mobile-more-sheet { display: none !important; }
-  .mobile-sidebar-overlay { display: none !important; }
-}
-
-/* ── Message delete button ─────────────────── */
-.msg-row { position: relative; }
-.msg-del-btn {
-  position: absolute;
-  right: 8px; top: 50%; transform: translateY(-50%);
-  background: var(--coral-glow);
-  border: 1px solid rgba(255,107,107,0.25);
-  color: var(--coral);
-  border-radius: 6px;
-  width: 28px; height: 28px;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-  flex-shrink: 0;
-}
-.msg-row:hover .msg-del-btn { opacity: 1; }
-.msg-del-btn:hover { background: var(--coral); color: white; }
-
-/* Always visible on mobile */
-@media (max-width: 768px) {
-  .msg-del-btn { opacity: 0.6; position: static; transform: none; margin-left: auto; }
-  .msg-row { flex-wrap: wrap; }
-}
+  /* Auto-patch loadPayments so Refresh button re-applies search/pagination */
+  let _patched = false;
+  function _tryPatch () {
+    if (_patched || typeof window.loadPayments !== 'function') return;
+    _patched = true;
+    const _orig = window.loadPayments;
+    window.loadPayments = async function (...args) {
+      await _orig.apply(this, args);
+      if (window._allPayments?.length) _applyFilter();
+    };
+  }
+  _tryPatch();
+  window.addEventListener('load', () => {
+    _tryPatch();
+    if (window._allPayments?.length) _applyFilter();
+  });
+})();
+</script>
+</body>
+</html>
