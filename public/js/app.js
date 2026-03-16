@@ -947,17 +947,16 @@ let payScreenshotFile = null;
 
 function initPayments() {
   const formCard = document.getElementById('pay-form-card');
-  if (formCard) formCard.style.display = currentUser.role === 'admin' ? 'none' : 'block';
+  if (formCard) formCard.style.display = 'block';
 
   const subEl = document.getElementById('pay-panel-sub');
   if (subEl) subEl.textContent = currentUser.role === 'admin'
-    ? 'View and manage all payment submissions from agents'
+    ? 'Record, upload and manage all payment submissions'
     : 'Record and track your payment submissions with screenshots';
 
-  if (currentUser.role !== 'admin') {
-    const dateEl = document.getElementById('pay-date');
-    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
-  }
+  const dateEl = document.getElementById('pay-date');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
   loadPayments();
 }
 
@@ -1065,7 +1064,6 @@ window._renderPayPage = function (pageItems, _allFiltered, currentPage, total) {
     // Screenshot section
     let screenshotHtml = '';
     if (p.screenshot_url) {
-      const isAgent = !isAdmin;
       screenshotHtml = `
         <div class="pay-ss-section">
           <img class="pay-screenshot-thumb" src="${p.screenshot_url}"
@@ -1074,9 +1072,9 @@ window._renderPayPage = function (pageItems, _allFiltered, currentPage, total) {
           <button class="pay-view-btn" onclick="openPayLightbox('${p.screenshot_url}')">
             🔍 View Screenshot
           </button>
-          ${isAgent ? `<button class="pay-remove-ss-btn" onclick="removePayScreenshot(${p.id})">✕ Remove</button>` : ''}
+          ${canDelete ? `<button class="pay-remove-ss-btn" onclick="removePayScreenshot(${p.id})">✕ Remove</button>` : ''}
         </div>`;
-    } else if (!isAdmin) {
+    } else if (canDelete) {
       screenshotHtml = `
         <div class="pay-ss-section pay-ss-upload">
           <label class="pay-upload-label" title="Attach screenshot">
