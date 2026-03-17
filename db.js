@@ -7,6 +7,7 @@ const pool = new Pool({
 });
 
 async function initSchema() {
+  // ── Core tables ─────────────────────────────────────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id            SERIAL PRIMARY KEY,
@@ -19,15 +20,15 @@ async function initSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS tokens (
-      id            SERIAL PRIMARY KEY,
-      token_ref     TEXT UNIQUE NOT NULL,
-      details       TEXT NOT NULL,
-      charge        NUMERIC(12,2) DEFAULT 0,
-      status        TEXT NOT NULL DEFAULT 'active',
-      author_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      author_name   TEXT NOT NULL,
-      created_at    TIMESTAMPTZ DEFAULT NOW(),
-      completed_at  TIMESTAMPTZ,
+      id              SERIAL PRIMARY KEY,
+      token_ref       TEXT UNIQUE NOT NULL,
+      details         TEXT NOT NULL,
+      charge          NUMERIC(12,2) DEFAULT 0,
+      status          TEXT NOT NULL DEFAULT 'active',
+      author_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_name     TEXT NOT NULL,
+      created_at      TIMESTAMPTZ DEFAULT NOW(),
+      completed_at    TIMESTAMPTZ,
       kyc_image_url   TEXT,
       kyc_public_id   TEXT,
       kyc_uploaded_at TIMESTAMPTZ,
@@ -87,7 +88,7 @@ async function initSchema() {
     );
   `);
 
-  // ── KYC slot-2 columns (safe to re-run on existing databases) ──────────────
+  // ── KYC slot-2 legacy columns (kept for backward compat, now unused) ────────
   await pool.query(`
     ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_image_url_2   TEXT;
     ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_public_id_2   TEXT;
@@ -95,16 +96,76 @@ async function initSchema() {
     ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_uploaded_by_2 TEXT;
   `);
 
-  // Seed default channels
+  // ── Child tables for multi-photo KYC and payment images ─────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS token_kyc_images (
+      id          SERIAL PRIMARY KEY,
+      token_id    INTEGER NOT NULL REFERENCES tokens(id) ON DELETE CASCADE,
+      image_url   TEXT NOT NULL,
+      public_id   TEXT,
+      uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+      uploaded_by TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS payment_images (
+      id          SERIAL PRIMARY KEY,
+      payment_id  INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+      image_url   TEXT NOT NULL,
+      public_id   TEXT,
+      uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+      uploaded_by TEXT
+    );
+  `);
+
+  // ── Migrate existing KYC slot-1 data into token_kyc_images ──────────────────
+  // Safe to re-run: NOT EXISTS prevents duplicates
+  await pool.query(`
+    INSERT INTO token_kyc_images (token_id, image_url, public_id, uploaded_at, uploaded_by)
+    SELECT t.id, t.kyc_image_url, t.kyc_public_id,
+           COALESCE(t.kyc_uploaded_at, t.created_at), t.kyc_uploaded_by
+    FROM tokens t
+    WHERE t.kyc_image_url IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM token_kyc_images k
+      WHERE k.token_id = t.id AND k.image_url = t.kyc_image_url
+    )
+  `);
+
+  // ── Migrate existing KYC slot-2 data (silently skip if columns missing) ─────
+  await pool.query(`
+    INSERT INTO token_kyc_images (token_id, image_url, public_id, uploaded_at, uploaded_by)
+    SELECT t.id, t.kyc_image_url_2, t.kyc_public_id_2,
+           COALESCE(t.kyc_uploaded_at_2, t.created_at), t.kyc_uploaded_by_2
+    FROM tokens t
+    WHERE t.kyc_image_url_2 IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM token_kyc_images k
+      WHERE k.token_id = t.id AND k.image_url = t.kyc_image_url_2
+    )
+  `).catch(() => {});
+
+  // ── Migrate existing payment screenshots into payment_images ─────────────────
+  await pool.query(`
+    INSERT INTO payment_images (payment_id, image_url, public_id, uploaded_at)
+    SELECT p.id, p.screenshot_url, p.screenshot_public_id, p.created_at
+    FROM payments p
+    WHERE p.screenshot_url IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM payment_images pi
+      WHERE pi.payment_id = p.id AND pi.image_url = p.screenshot_url
+    )
+  `);
+
+  // ── Seed default channels ────────────────────────────────────────────────────
   await pool.query(`
     INSERT INTO channels (name, description, icon) VALUES
-      ('general',      'General team chat',      '💬'),
-      ('token-alerts', 'Token notifications',    '🎫'),
-      ('support',      'Help & support',          '🛠️')
+      ('general',      'General team chat',   '💬'),
+      ('token-alerts', 'Token notifications', '🎫'),
+      ('support',      'Help & support',       '🛠️')
     ON CONFLICT (name) DO NOTHING;
   `);
 
-  // Seed default admin user (admin / admin123)
+  // ── Seed default admin user (admin / admin123) ───────────────────────────────
   const bcrypt = require('bcryptjs');
   const hash   = await bcrypt.hash('admin123', 10);
   await pool.query(`
