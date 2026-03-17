@@ -139,25 +139,34 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Token not found' });
     if (user.role !== 'admin' && rows[0].author_id !== user.id)
       return res.status(403).json({ error: 'Not allowed' });
-    if (rows[0].kyc_public_id) {
-      await cloudinary.uploader.destroy(rows[0].kyc_public_id).catch(() => {});
-    }
+    // Destroy both KYC slots from Cloudinary before deleting the token
+    if (rows[0].kyc_public_id)   await cloudinary.uploader.destroy(rows[0].kyc_public_id).catch(() => {});
+    if (rows[0].kyc_public_id_2) await cloudinary.uploader.destroy(rows[0].kyc_public_id_2).catch(() => {});
     await pool.query('DELETE FROM tokens WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/tokens/:id/kyc  (admin only)
+// POST /api/tokens/:id/kyc?slot=1|2  (admin only)
 router.post('/:id/kyc', requireAdmin, upload.single('kyc_image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const slot   = req.query.slot === '2' ? 2 : 1;
+  const urlCol = slot === 2 ? 'kyc_image_url_2'   : 'kyc_image_url';
+  const pidCol = slot === 2 ? 'kyc_public_id_2'   : 'kyc_public_id';
+  const atCol  = slot === 2 ? 'kyc_uploaded_at_2' : 'kyc_uploaded_at';
+  const byCol  = slot === 2 ? 'kyc_uploaded_by_2' : 'kyc_uploaded_by';
+
   try {
     const { rows } = await pool.query('SELECT * FROM tokens WHERE id=$1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Token not found' });
-    // Remove old image if exists
-    if (rows[0].kyc_public_id) {
-      await cloudinary.uploader.destroy(rows[0].kyc_public_id).catch(() => {});
+
+    // Remove old image for this slot if one already exists
+    if (rows[0][pidCol]) {
+      await cloudinary.uploader.destroy(rows[0][pidCol]).catch(() => {});
     }
-    // Upload to Cloudinary via stream
+
+    // Upload new image to Cloudinary via stream
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         { folder: 'token-tracker/kyc', resource_type: 'image' },
@@ -167,34 +176,41 @@ router.post('/:id/kyc', requireAdmin, upload.single('kyc_image'), async (req, re
     });
 
     const updated = await pool.query(
-      `UPDATE tokens SET kyc_image_url=$1, kyc_public_id=$2, kyc_uploaded_at=NOW(), kyc_uploaded_by=$3
+      `UPDATE tokens SET ${urlCol}=$1, ${pidCol}=$2, ${atCol}=NOW(), ${byCol}=$3
        WHERE id=$4 RETURNING *`,
       [result.secure_url, result.public_id, req.session.user.name, req.params.id]
     );
     const token = updated.rows[0];
 
-    // Notify agent via Socket.IO
+    // Notify agent via Socket.IO — pass whichever URL was just uploaded
     const io = req.app.get('io');
     if (io && token.author_id) {
       io.to(`user_${token.author_id}`).emit('kyc_uploaded', {
-        token_ref:    token.token_ref,
-        kyc_image_url: token.kyc_image_url,
+        token_ref:     token.token_ref,
+        kyc_image_url: slot === 1 ? token.kyc_image_url : token.kyc_image_url_2,
+        slot,
       });
     }
     res.json(token);
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// DELETE /api/tokens/:id/kyc  (admin only)
+// DELETE /api/tokens/:id/kyc?slot=1|2  (admin only)
 router.delete('/:id/kyc', requireAdmin, async (req, res) => {
+  const slot   = req.query.slot === '2' ? 2 : 1;
+  const urlCol = slot === 2 ? 'kyc_image_url_2'   : 'kyc_image_url';
+  const pidCol = slot === 2 ? 'kyc_public_id_2'   : 'kyc_public_id';
+  const atCol  = slot === 2 ? 'kyc_uploaded_at_2' : 'kyc_uploaded_at';
+  const byCol  = slot === 2 ? 'kyc_uploaded_by_2' : 'kyc_uploaded_by';
+
   try {
-    const { rows } = await pool.query('SELECT kyc_public_id FROM tokens WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(`SELECT ${pidCol} FROM tokens WHERE id=$1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Token not found' });
-    if (rows[0].kyc_public_id) {
-      await cloudinary.uploader.destroy(rows[0].kyc_public_id).catch(() => {});
+    if (rows[0][pidCol]) {
+      await cloudinary.uploader.destroy(rows[0][pidCol]).catch(() => {});
     }
     await pool.query(
-      'UPDATE tokens SET kyc_image_url=NULL, kyc_public_id=NULL, kyc_uploaded_at=NULL, kyc_uploaded_by=NULL WHERE id=$1',
+      `UPDATE tokens SET ${urlCol}=NULL, ${pidCol}=NULL, ${atCol}=NULL, ${byCol}=NULL WHERE id=$1`,
       [req.params.id]
     );
     res.json({ ok: true });
