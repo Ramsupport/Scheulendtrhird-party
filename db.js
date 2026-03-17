@@ -19,15 +19,15 @@ async function initSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS tokens (
-      id              SERIAL PRIMARY KEY,
-      token_ref       TEXT UNIQUE NOT NULL,
-      details         TEXT NOT NULL,
-      charge          NUMERIC(12,2) DEFAULT 0,
-      status          TEXT NOT NULL DEFAULT 'active',
-      author_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      author_name     TEXT NOT NULL,
-      created_at      TIMESTAMPTZ DEFAULT NOW(),
-      completed_at    TIMESTAMPTZ,
+      id            SERIAL PRIMARY KEY,
+      token_ref     TEXT UNIQUE NOT NULL,
+      details       TEXT NOT NULL,
+      charge        NUMERIC(12,2) DEFAULT 0,
+      status        TEXT NOT NULL DEFAULT 'active',
+      author_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_name   TEXT NOT NULL,
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      completed_at  TIMESTAMPTZ,
       kyc_image_url   TEXT,
       kyc_public_id   TEXT,
       kyc_uploaded_at TIMESTAMPTZ,
@@ -85,6 +85,14 @@ async function initSchema() {
       submitted_name       TEXT NOT NULL,
       created_at           TIMESTAMPTZ DEFAULT NOW()
     );
+  `);
+
+  // ── KYC slot-2 columns (safe to re-run on existing databases) ──────────────
+  await pool.query(`
+    ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_image_url_2   TEXT;
+    ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_public_id_2   TEXT;
+    ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_uploaded_at_2 TIMESTAMPTZ;
+    ALTER TABLE tokens ADD COLUMN IF NOT EXISTS kyc_uploaded_by_2 TEXT;
   `);
 
   // Seed default channels
