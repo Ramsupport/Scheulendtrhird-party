@@ -2299,3 +2299,18 @@ tbody tr:last-child td{border-bottom:none;}
   .msg-del-btn { opacity: 0.6; position: static; transform: none; margin-left: auto; }
   .msg-row { flex-wrap: wrap; }
 }
+/* TOKEN TABLE PAGINATION */
+.token-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--s2);
+  flex-wrap: wrap;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+@media (max-width: 768px) {
+  .token-pagination { padding: 10px 16px; gap: 6px; }
+}
