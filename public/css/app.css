@@ -58,6 +58,61 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;font-size:14px;line-height:1.5;overflow-x:hidden;}
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
+
+/* ── LIGHT MODE ───────────────────────────── */
+body.light-mode {
+  --navy:         #dde5f4;
+  --navy-2:       #e8eef8;
+  --navy-3:       #eef3fb;
+  --navy-4:       #f3f7fd;
+  --navy-5:       #f8faff;
+  --bg:           #eef3fb;
+  --s1:           #e4ecf6;
+  --s2:           #ffffff;
+  --s3:           #f0f5fb;
+  --s4:           #e8eef8;
+  --text-1:       #0d1526;
+  --text-2:       #3d5070;
+  --text-3:       #8899bb;
+  --border:       rgba(0,0,0,0.08);
+  --border-2:     rgba(0,0,0,0.13);
+  --border-teal:  rgba(0,168,133,0.35);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.09);
+  --shadow-lg:    0 8px 40px rgba(0,0,0,0.13);
+  --teal-glow:    rgba(0,168,133,0.13);
+  --teal-light:   rgba(0,168,133,0.09);
+  --gold-glow:    rgba(200,150,0,0.13);
+  --coral-glow:   rgba(220,60,60,0.10);
+  --violet-light: rgba(100,70,220,0.10);
+}
+body.light-mode .auth-bg  { background: var(--navy-2); }
+body.light-mode .navbar   { background: rgba(240,245,252,0.97); }
+body.light-mode select.field-input option { background: #fff; color: #0d1526; }
+body.light-mode .toast    { background: #1c2540; }
+
+/* ── THEME TOGGLE BUTTON ──────────────────── */
+.btn-theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.btn-theme-toggle:hover {
+  background: var(--s3);
+  border-color: var(--teal);
+  transform: scale(1.08);
+}
+
 /* ── AUTH ─────────────────────────────── */
 .auth-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:var(--navy);}
 .auth-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(0,212,170,0.13) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 80%,rgba(124,92,252,0.1) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 50% 50%,rgba(245,200,66,0.05) 0%,transparent 70%);animation:meshMove 8s ease-in-out infinite alternate;}
