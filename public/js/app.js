@@ -432,7 +432,7 @@ function renderTokenTable(tokens) {
         ? `<button class="act-btn act-complete" onclick="updateTokenStatus(${t.id},'completed')">✓ Complete</button>`
         : `<button class="act-btn act-reactivate" onclick="updateTokenStatus(${t.id},'active')">↩ Reactivate</button>`)
       : '';
-    const copyBtn = `<button class="act-btn" onclick="copyTokenDetails(${t.id})" title="Copy token details">📋</button>`;
+    const copyBtn = `<button class="act-btn" onclick="copyTokenDetails(${t.id})" title="Copy token details">📋 Copy</button>`;
     const deleteBtn = canEdit ? `<button class="act-btn act-delete" onclick="deleteToken(${t.id})">🗑</button>` : '';
     const editBtn   = canEdit ? `<button class="act-btn" style="background:rgba(124,92,252,0.12);color:var(--violet);border:1px solid rgba(124,92,252,0.25)" onclick="openEditToken(${t.id})">✏️ Edit</button>` : '';
 
