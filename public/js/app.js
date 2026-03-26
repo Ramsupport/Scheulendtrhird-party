@@ -1177,23 +1177,42 @@ async function submitPayment() {
   const amount  = document.getElementById('pay-amount').value.trim();
   const date    = document.getElementById('pay-date').value;
   const btn     = document.getElementById('pay-submit-btn');
+
   if (!details) { showToast('Please enter payment details', 'error'); return; }
   if (!amount || parseFloat(amount) <= 0) { showToast('Please enter a valid amount', 'error'); return; }
-  btn.disabled = true; btn.textContent = '⏳ Submitting…';
+
+  btn.disabled = true;
+  
   try {
-    const fd = new FormData();
-    fd.append('details', details);
-    fd.append('amount',  amount);
-    if (date) fd.append('payment_date', date);
-    if (payScreenshotFile) fd.append('screenshot', payScreenshotFile);
-    const res  = await fetch('/api/payments', { method:'POST', body:fd, credentials:'include' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed');
+    btn.textContent = '⏳ Creating Record…';
+    const paymentData = await api('POST', '/payments', { details, amount, payment_date: date });
+    
+    if (payScreenshotFile) {
+      btn.textContent = '⏳ Uploading Screenshot…';
+      const fd = new FormData();
+      fd.append('screenshot', payScreenshotFile);
+      
+      // IMPORTANT: This app uses /images instead of /screenshot!
+      const res = await fetch(`/api/payments/${paymentData.id}/images`, { 
+        method: 'POST', 
+        body: fd, 
+        credentials: 'include' 
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment saved, but screenshot failed to upload.');
+    }
+
     showToast('✅ Payment recorded successfully!', 'success');
     clearPayForm();
     loadPayments();
-  } catch(err) { showToast(err.message, 'error'); }
-  finally { btn.disabled = false; btn.textContent = '💳 Submit Payment'; }
+  } catch(err) { 
+    showToast(err.message, 'error'); 
+    loadPayments(); 
+  } finally { 
+    btn.disabled = false; 
+    btn.textContent = '💳 Submit Payment'; 
+  }
 }
 
 // ── Load ─────────────────────────────────
