@@ -352,25 +352,14 @@
             <!-- Screenshot upload -->
             <div class="pay-field-full">
               <label class="field-label">Payment Screenshot</label>
-              <div class="pay-drop-zone" id="pay-drop-zone"
-                onclick="document.getElementById('pay-screenshot').click()"
-                ondragover="event.preventDefault();this.classList.add('drag-over')"
-                ondragleave="this.classList.remove('drag-over')"
-                ondrop="handlePayDrop(event)">
-                <div id="pay-drop-content">
-                  <div class="pay-drop-icon">📷</div>
-                  <div class="pay-drop-text">Click to upload or drag &amp; drop screenshot</div>
-                  <div class="pay-drop-sub">JPG, PNG, WEBP up to 10MB</div>
-                </div>
-                <div id="pay-preview-wrap" style="display:none">
-                  <img id="pay-preview-img" class="pay-preview-img" alt="Preview">
-                  <div id="pay-preview-name" class="pay-preview-name"></div>
-                  <button class="pay-remove-btn" onclick="event.stopPropagation();clearPayScreenshot()">✕ Remove</button>
-                </div>
-                <input type="file" id="pay-screenshot" accept="image/*" style="display:none" onchange="handlePayFile(this)">
+              <div style="margin-bottom: 24px; margin-top: 8px;">
+                <label class="pay-upload-label" style="display:inline-block; cursor:pointer;">
+                  📎 Attach Screenshot
+                  <input type="file" id="top-simple-file" accept="image/*" style="display:none" onchange="selectTopFile(this)">
+                </label>
+                <span id="top-file-name" style="margin-left: 12px; font-size: 13px; color: var(--teal);"></span>
               </div>
             </div>
-
           </div>
 
           <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
