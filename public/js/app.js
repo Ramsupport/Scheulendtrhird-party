@@ -173,6 +173,14 @@ document.getElementById('login-pass').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
 
+function selectTopFile(input) {
+  const file = input.files[0];
+  if (file) {
+    payScreenshotFile = file; 
+    document.getElementById('top-file-name').textContent = file.name;
+  }
+}
+
 // ── SOCKET ──────────────────────────────────
 function initSocket() {
   socket = io({ withCredentials: true });
@@ -1153,7 +1161,14 @@ function clearPayForm() {
   document.getElementById('pay-details').value = '';
   document.getElementById('pay-amount').value  = '';
   document.getElementById('pay-date').value    = new Date().toISOString().slice(0, 10);
-  clearPayScreenshot();
+  
+  payScreenshotFile = null;
+  
+  const input = document.getElementById('top-simple-file');
+  if (input) input.value = '';
+  
+  const nameEl = document.getElementById('top-file-name');
+  if (nameEl) nameEl.textContent = '';
 }
 
 // ── Submit ───────────────────────────────
